@@ -1,0 +1,18 @@
+GET http://127.0.0.1:3000/health
+
+
+###
+POST http://localhost:3000/query
+Content-Type: application/json
+
+{
+  "query": "如何使用 NGINX Plus 验证 JWT？"
+}
+
+###
+POST http://localhost:3000/test
+Content-Type: application/json
+
+{
+  "query": "如何使用 NGINX Plus 验证 JWT？"
+}

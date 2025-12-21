@@ -1,33 +1,145 @@
-//TIP With Search Everywhere, you can find any action, file, or symbol in your project. Press <shortcut actionId="Shift"/> <shortcut actionId="Shift"/>, type in <b>terminal</b>, and press <shortcut actionId="EditorEnter"/>. Then run <shortcut raw="npm run dev"/> in the terminal and click the link in its output to open the app in the browser.
-export function setupCounter(element: HTMLElement) {
-  //TIP Try <shortcut actionId="GotoDeclaration"/> on <shortcut raw="counter"/> to see its usages. You can also use this shortcut to jump to a declaration – try it on <shortcut raw="counter"/> on line 13.
-  let counter = 0;
+import { initializeRagSystem, processQuery, testRAGEffectiveness, analyzeRAGEffectiveness } from './agents/ragAgent';
+import { createServer } from 'http';
 
-  const adjustCounterValue = (value: number)  => {
-    if (value >= 100) return value - 100;
-    if (value <= -100) return value + 100;
-    return value;
-  };
+async function main() {
+  try {
+    console.log('🚀 启动RAG系统...');
+    await initializeRagSystem('../tests/');
+    console.log('✅ RAG系统初始化完成');
 
-  const setCounter = (value: number) => {
-    counter = adjustCounterValue(value);
-    //TIP WebStorm has lots of inspections to help you catch issues in your project. It also has quick fixes to help you resolve them. Press <shortcut actionId="ShowIntentionActions"/> on <shortcut raw="text"/> and choose <b>Inline variable</b> to clean up the redundant code.
-    const text = `${counter}`;
-    element.innerHTML = text;
-  };
+    const PORT = process.env.PORT || 3000;
 
-  document.getElementById('increaseByOne')?.addEventListener('click', () => setCounter(counter + 1));
-  document.getElementById('decreaseByOne')?.addEventListener('click', () => setCounter(counter - 1));
-  document.getElementById('increaseByTwo')?.addEventListener('click', () => setCounter(counter + 2));
+    const server = createServer(async (req, res) => {
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  //TIP In the app running in the browser, you’ll find that clicking <b>-2</b> doesn't work. To fix that, rewrite it using the code from lines 19 - 21 as examples of the logic.
-  document.getElementById('decreaseByTwo')
+      if (req.method === 'OPTIONS') {
+        res.writeHead(200);
+        res.end();
+        return;
+      }
 
-  //TIP Let’s see how to review and commit your changes. Press <shortcut actionId="GotoAction"/> and look for <b>commit</b>. Try checking the diff for a file – double-click main.ts to do that.
-  setCounter(0);
+      if (req.method === 'GET' && req.url === '/health') {
+        res.writeHead(200);
+        res.end(JSON.stringify({ status: 'healthy', message: 'RAG系统运行正常' }));
+        return;
+      }
+
+      if (req.url === '/test') {
+        try {
+          let body = '';
+
+          if (req.method === 'POST') {
+            req.on('data', chunk => {
+              body += chunk.toString();
+            });
+
+            req.on('end', async () => {
+              try {
+                const { query, debug = true } = JSON.parse(body);
+
+                if (!query) {
+                  res.writeHead(400);
+                  res.end(JSON.stringify({ error: '缺少query参数' }));
+                  return;
+                }
+
+                console.log(`🧪 Testing RAG for query: ${query}`);
+
+                // 执行详细的RAG效果测试
+                const ragAnalysis = await analyzeRAGEffectiveness(query, debug);
+
+                res.writeHead(200);
+                res.end(JSON.stringify({
+                  success: true,
+                  query,
+                  analysis: ragAnalysis,
+                  message: `RAG效果分析完成，查看details字段了解详情`
+                }));
+              } catch (parseError) {
+                console.error('Test parse error:', parseError);
+                res.writeHead(400);
+                res.end(JSON.stringify({ error: '请求格式错误' }));
+              }
+            });
+          } else if (req.method === 'GET') {
+            // GET方法运行默认测试
+            console.log('🧪 Running default RAG effectiveness test...');
+            await testRAGEffectiveness();
+
+            res.writeHead(200);
+            res.end(JSON.stringify({
+              success: true,
+              message: 'RAG效果测试完成，请查看控制台输出'
+            }));
+          }
+        } catch (error) {
+          console.error('Test failed:', error);
+          res.writeHead(500);
+          res.end(JSON.stringify({ error: '测试失败' }));
+        }
+        return;
+      }
+
+      if (req.method === 'POST' && req.url === '/query') {
+        try {
+          let body = '';
+          req.on('data', chunk => {
+            body += chunk.toString();
+          });
+
+          req.on('end', async () => {
+            try {
+              const { query } = JSON.parse(body);
+
+              if (!query) {
+                res.writeHead(400);
+                res.end(JSON.stringify({ error: '缺少query参数' }));
+                return;
+              }
+
+              console.log(`🔍 收到查询: ${query}`);
+              const response = await processQuery(query);
+
+              res.writeHead(200);
+              res.end(JSON.stringify({
+                success: true,
+                query,
+                response
+              }));
+            } catch (parseError) {
+              console.error('解析请求失败:', parseError);
+              res.writeHead(400);
+              res.end(JSON.stringify({ error: '请求格式错误' }));
+            }
+          });
+        } catch (error) {
+          console.error('处理查询失败:', error);
+          res.writeHead(500);
+          res.end(JSON.stringify({ error: '服务器内部错误' }));
+        }
+        return;
+      }
+
+      res.writeHead(404);
+      res.end(JSON.stringify({ error: '接口不存在' }));
+    });
+
+    server.listen(PORT, () => {
+      console.log(`🌐 RAG服务器已启动`);
+      console.log(`📍 健康检查: http://localhost:${PORT}/health`);
+      console.log(`🧪 RAG测试: http://localhost:${PORT}/test`);
+      console.log(`🔍 查询接口: http://localhost:${PORT}/query`);
+      console.log(`💡 使用方法: POST {"query": "你的问题"} 到 /query 接口`);
+      console.log(`📊 测试RAG效果: 访问 /test 接口查看详细调试信息`);
+    });
+
+  } catch (error) {
+    console.error('❌ 系统启动失败:', error);
+    process.exit(1);
+  }
 }
 
-//TIP To find text strings in your project, you can use the <shortcut actionId="FindInPath"/> shortcut. Press it and type in <b>counter</b> – you’ll get all matches in one place.
-setupCounter(document.getElementById('counter-value') as HTMLElement);
-
-//TIP There's much more in WebStorm to help you be more productive. Press <shortcut actionId="Shift"/> <shortcut actionId="Shift"/> and search for <b>Learn WebStorm</b> to open our learning hub with more things for you to try.
+main().catch(console.error);
