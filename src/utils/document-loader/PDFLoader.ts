@@ -9,9 +9,14 @@ import { Document } from '@langchain/core/documents';
  * @returns Promise<Document[]> Array of loaded PDF documents
  */
 export async function loadPDFs(dataPath: string): Promise<Document[]> {
-  const directoryLoader = new DirectoryLoader(dataPath, {
-    '.pdf': (path: string) => new PDFLoader(path),
-  });
+  const directoryLoader = new DirectoryLoader(
+    dataPath, 
+    {
+      '.pdf': (path: string) => new PDFLoader(path),
+    },
+    true, // recursive
+    'warn' // unknown file type handling: 'ignore' | 'warn' | 'error'
+  );
 
   const directoryDocs = await directoryLoader.load();
   console.log(`Loaded ${directoryDocs.length} PDF documents.`);

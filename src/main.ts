@@ -4,7 +4,11 @@ import { createServer } from 'http';
 async function main() {
   try {
     console.log('🚀 启动RAG系统...');
-    await initializeRagSystem('../tests/');
+    
+    // 可以通过环境变量选择分块策略
+    const chunkingStrategy = (process.env.CHUNKING_STRATEGY || 'smart') as 'semantic' | 'sliding' | 'hierarchical' | 'smart';
+    
+    await initializeRagSystem('./tests/', chunkingStrategy);
     console.log('✅ RAG系统初始化完成');
 
     const PORT = process.env.PORT || 3000;

@@ -1,15 +1,29 @@
 import { MemoryVectorStore } from '@langchain/classic/vectorstores/memory';
-import { embedding_3, model } from '../utils/llm-client/glmClient';
+// import { embedding_3, model } from '../utils/llm-client/glmClient';
+import { siliconflowEmbedding as embedding_3 } from '../utils/llm-client/freeEmbeddingClient';
+import { model } from '../utils/llm-client/glmClient';
 import { loadPDFs, splitDocuments } from '../utils/document-loader/PDFLoader';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
+import { ChunkerFactory } from '../utils/document-loader/AdvancedChunker';
+import 'dotenv/config';
 
 const vectorStore = new MemoryVectorStore(embedding_3);
 
-export async function initializeRagSystem(dataPath: string = '../tests/'): Promise<void> {
+export async function initializeRagSystem(
+  dataPath: string = '../tests/',
+  chunkingStrategy: 'semantic' | 'sliding' | 'hierarchical' | 'smart' = 'smart'
+): Promise<void> {
   try {
-    console.log('Initializing RAG system...');
+    console.log(`Initializing RAG system with ${chunkingStrategy} chunking...`);
     const documents = await loadPDFs(dataPath);
-    const allSplits = await splitDocuments(documents, 1000, 200);
+    
+    // 使用高级分块策略
+    const chunker = ChunkerFactory.create(chunkingStrategy);
+    console.log(`Using chunking strategy: ${chunker.name}`);
+    console.log(`Description: ${chunker.description}`);
+    
+    const allSplits = await chunker.chunk(documents);
+    
     await vectorStore.addDocuments(allSplits);
     console.log(`RAG system initialized with ${allSplits.length} document chunks.`);
   } catch (error) {

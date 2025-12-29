@@ -1,40 +1,353 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/webstorm-icon-logo.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WS playground</title>
-  <link rel="stylesheet" href="/style.css">
+  <title>RAG 智能问答系统</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      max-width: 800px;
+      width: 100%;
+      padding: 40px;
+    }
+    
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 32px;
+    }
+    
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+    
+    .status {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      margin-bottom: 20px;
+    }
+    
+    .status.online {
+      background: #d4edda;
+      color: #155724;
+    }
+    
+    .status.offline {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    
+    .input-group {
+      margin-bottom: 20px;
+    }
+    
+    textarea {
+      width: 100%;
+      padding: 15px;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 16px;
+      resize: vertical;
+      min-height: 100px;
+      font-family: inherit;
+      transition: border-color 0.3s;
+    }
+    
+    textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 30px;
+    }
+    
+    button {
+      flex: 1;
+      padding: 15px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+    
+    .btn-secondary:hover:not(:disabled) {
+      background: #e0e0e0;
+    }
+    
+    .response-box {
+      background: #f8f9fa;
+      border-radius: 10px;
+      padding: 20px;
+      min-height: 200px;
+      max-height: 400px;
+      overflow-y: auto;
+      display: none;
+    }
+    
+    .response-box.show {
+      display: block;
+    }
+    
+    .response-box h3 {
+      color: #333;
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+    
+    .response-content {
+      color: #555;
+      line-height: 1.8;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    
+    .loading {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #667eea;
+      font-weight: 600;
+    }
+    
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .examples {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #e0e0e0;
+    }
+    
+    .examples h4 {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+    
+    .example-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    
+    .example-tag {
+      padding: 6px 12px;
+      background: #e8eaf6;
+      color: #667eea;
+      border-radius: 15px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .example-tag:hover {
+      background: #667eea;
+      color: white;
+    }
+  </style>
 </head>
 <body>
-<header class="logo">
-  <a href="https://www.jetbrains.com/webstorm/">
-    <img src="/webstorm-logo.svg" alt="WebStorm logo" width="344"
-         height="90">
-  </a>
-</header>
-<main id="app">
-  <h1 class="title">
-    Thank you for trying it out. <br /> Your first project is up and running
-    now.
-  </h1>
-  <section class="counter">
-    <div class="counter-info">
-      <p class="counter-text">Counter is</p>
-      <p class="counter-value" id="counter-value"></p>
+  <div class="container">
+    <h1>🤖 RAG 智能问答系统</h1>
+    <p class="subtitle">基于文档检索的智能问答助手</p>
+    
+    <div id="status" class="status offline">● 检查中...</div>
+    
+    <div class="input-group">
+      <textarea 
+        id="queryInput" 
+        placeholder="请输入您的问题，例如：什么是 Nginx？"
+      ></textarea>
     </div>
-    <div class="counter-interaction">
-      <button id="increaseByOne" type="button">+1</button>
-      <button id="increaseByTwo" type="button">+2</button>
-      <button id="decreaseByOne" type="button">-1</button>
-      <button id="decreaseByTwo" type="button">-2</button>
+    
+    <div class="button-group">
+      <button id="submitBtn" class="btn-primary" disabled>
+        发送问题
+      </button>
+      <button id="clearBtn" class="btn-secondary">
+        清空
+      </button>
     </div>
-  </section>
-</main>
-<footer class="technologies">
-  <img src="/technologies.svg" alt="List of supported technologies">
-</footer>
-<script type="module" src="/src/main.ts"></script>
+    
+    <div id="responseBox" class="response-box">
+      <h3>💡 回答</h3>
+      <div id="responseContent" class="response-content"></div>
+    </div>
+    
+    <div id="loadingBox" class="response-box">
+      <div class="loading">
+        <div class="spinner"></div>
+        <span>正在思考中...</span>
+      </div>
+    </div>
+    
+    <div class="examples">
+      <h4>💭 示例问题（点击快速填入）</h4>
+      <div class="example-tags">
+        <span class="example-tag">什么是 Nginx？</span>
+        <span class="example-tag">如何配置反向代理？</span>
+        <span class="example-tag">Nginx 的主要功能是什么？</span>
+        <span class="example-tag">如何使用 NGINX Plus 验证 JWT？</span>
+        <span class="example-tag">Nginx 和 Apache 的区别</span>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    const API_URL = 'http://localhost:3000';
+    const statusEl = document.getElementById('status');
+    const queryInput = document.getElementById('queryInput');
+    const submitBtn = document.getElementById('submitBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const responseBox = document.getElementById('responseBox');
+    const responseContent = document.getElementById('responseContent');
+    const loadingBox = document.getElementById('loadingBox');
+    
+    // 检查服务器状态
+    async function checkHealth() {
+      try {
+        const response = await fetch(`${API_URL}/health`);
+        const data = await response.json();
+        
+        if (data.status === 'healthy') {
+          statusEl.textContent = '● 服务正常';
+          statusEl.className = 'status online';
+          submitBtn.disabled = false;
+        }
+      } catch (error) {
+        statusEl.textContent = '● 服务离线';
+        statusEl.className = 'status offline';
+        submitBtn.disabled = true;
+      }
+    }
+    
+    // 发送查询
+    async function sendQuery() {
+      const query = queryInput.value.trim();
+      
+      if (!query) {
+        alert('请输入问题');
+        return;
+      }
+      
+      // 显示加载状态
+      responseBox.classList.remove('show');
+      loadingBox.classList.add('show');
+      submitBtn.disabled = true;
+      
+      try {
+        const response = await fetch(`${API_URL}/query`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ query })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.response && data.response.length > 0) {
+          responseContent.textContent = data.response[0].content;
+        } else {
+          responseContent.textContent = '抱歉，没有获取到回答。';
+        }
+        
+      } catch (error) {
+        responseContent.textContent = `错误：${error.message}`;
+      } finally {
+        loadingBox.classList.remove('show');
+        responseBox.classList.add('show');
+        submitBtn.disabled = false;
+      }
+    }
+    
+    // 清空
+    function clearAll() {
+      queryInput.value = '';
+      responseBox.classList.remove('show');
+      loadingBox.classList.remove('show');
+    }
+    
+    // 事件监听
+    submitBtn.addEventListener('click', sendQuery);
+    clearBtn.addEventListener('click', clearAll);
+    
+    queryInput.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key === 'Enter') {
+        sendQuery();
+      }
+    });
+    
+    // 示例问题点击
+    document.querySelectorAll('.example-tag').forEach(tag => {
+      tag.addEventListener('click', () => {
+        queryInput.value = tag.textContent;
+        queryInput.focus();
+      });
+    });
+    
+    // 初始化
+    checkHealth();
+    setInterval(checkHealth, 30000); // 每30秒检查一次
+  </script>
 </body>
 </html>

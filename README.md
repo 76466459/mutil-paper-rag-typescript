@@ -11,6 +11,8 @@
 - 🔄 **流式响应**: 支持实时流式输出处理
 - 🇨🇳 **中文优化**: 完全中文化的提示词和响应
 - ⚡ **高性能**: 使用 `dynamicSystemPromptMiddleware` 优化
+- 🧩 **高级分块策略**: 4 种智能分块算法，显著提升检索质量
+- 📊 **LangSmith 追踪**: 可选的调试和性能监控（详见 [配置指南](docs/LANGSMITH_SETUP.md)）
 
 ## 🚀 快速开始
 
@@ -22,12 +24,39 @@ npm install
 
 ### 2. 环境配置
 
-智谱AI的API密钥已在代码中配置，如需修改请编辑：
-`src/utils/llm-client/glmClient.ts`
+复制 `.env.example` 到 `.env` 并配置：
 
-```typescript
-const zhipuAIApiKey = 'your-api-key-here';
+```bash
+cp .env.example .env
 ```
+
+**配置 Embedding 服务（必需）：**
+
+智谱 AI 需要付费，推荐使用免费的硅基流动：
+
+1. 访问 [https://siliconflow.cn/](https://siliconflow.cn/) 注册账号（免费）
+2. 获取 API Key
+3. 在 `.env` 文件中配置：
+
+```env
+SILICONFLOW_API_KEY=sk-your-key-here
+```
+
+详细配置说明请查看 [免费 Embedding 配置指南](docs/FREE_EMBEDDING_GUIDE.md)。
+
+**可选：启用 LangSmith 追踪**（用于调试和性能监控）
+
+1. 访问 [https://smith.langchain.com/](https://smith.langchain.com/) 注册账号
+2. 获取 API Key
+3. 在 `.env` 文件中配置：
+
+```env
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY=your_langsmith_api_key
+LANGCHAIN_PROJECT=rag-system
+```
+
+详细配置说明请查看 [LangSmith 配置指南](docs/LANGSMITH_SETUP.md)。
 
 ### 3. 准备文档
 
@@ -183,13 +212,31 @@ src/
 
 ```env
 PORT=3000                    # 服务器端口（可选，默认3000）
+CHUNKING_STRATEGY=smart      # 分块策略：semantic | sliding | hierarchical | smart
+```
+
+### 分块策略选择
+
+系统支持 4 种高级分块策略：
+
+1. **semantic** - 语义分块：基于段落和句子边界，保持语义完整性
+2. **sliding** - 滑动窗口：使用重叠窗口确保上下文连续性
+3. **hierarchical** - 层次化分块：创建父子关系，保留文档结构
+4. **smart** - 智能分块（推荐）：自动检测文档类型，选择最佳策略
+
+详细说明请查看：[高级分块策略文档](docs/ADVANCED_CHUNKING.md)
+
+### 对比测试分块策略
+
+```bash
+npx tsx scripts/compareChunkingStrategies.ts
 ```
 
 ### 修改文档路径
 
 编辑 `src/main.ts` 第7行：
 ```typescript
-await initializeRagSystem('../tests/');  // 修改为你的文档目录
+await initializeRagSystem('./tests/', 'smart');  // 第二个参数指定分块策略
 ```
 
 ### 调整检索参数
